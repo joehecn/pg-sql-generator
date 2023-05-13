@@ -320,7 +320,7 @@ class F {
   }
 }
 
-export default function f(tableName: string) {
+export function f(tableName: string) {
   return new F(tableName);
 }
 

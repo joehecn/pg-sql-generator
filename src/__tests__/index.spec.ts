@@ -1,4 +1,4 @@
-import f from '../index';
+import { f } from '../index';
 
 it('platform_cfg', () => {
   expect(f('i18n').find({ 'platform_cfg[1]': 'Mega' }).exec()).toBe(
