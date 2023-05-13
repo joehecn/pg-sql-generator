@@ -1,1 +1,1 @@
-#pg-sql-generator
+# pg-sql-generator
