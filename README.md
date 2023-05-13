@@ -2,7 +2,7 @@
 
 [![codecov](https://codecov.io/gh/joehecn/pg-sql-generator/branch/main/graph/badge.svg?token=OV8C8FIQHH)](https://codecov.io/gh/joehecn/pg-sql-generator)
 
-## devalop
+## develop
 ```bash
 # Commit and push your code to git
 git add .
