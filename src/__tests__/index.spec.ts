@@ -329,3 +329,13 @@ it('update({},{},{})', () => {
     values: ['123'],
   });
 });
+
+/* delete */
+it('delete()', () => {
+  expect(f('user').delete().exec()).toEqual('DELETE FROM public.user');
+});
+it('delete({},{})', () => {
+  expect(f('user').delete({ id: '1' }, { id: 'globalId', icon: 1 }).exec()).toEqual(
+    `DELETE FROM public.user WHERE id = '1' RETURNING id AS "globalId", icon`,
+  );
+});

@@ -148,10 +148,22 @@ class F {
       'INSERT INTO': null, // insert
       VALUES: null,
       UPDATE: null, // update
+      'DELETE FROM': null, // delete
       SET: null,
       RETURNING: null,
       values: [],
     };
+  }
+
+  join(tableName: string, keyObj: any, type = '') {
+    let key = 'JOIN';
+    key = type === 'RIGHT' ? 'RIGHT ' + key : key;
+    key = type === 'LEFT' ? 'LEFT ' + key : key;
+    const sql = Object.keys(keyObj)
+      .map((k) => `public.${k} = public.${keyObj[k]}`)
+      .join(' AND ');
+    this.query[key].push(`public.${tableName} ON ${sql}`);
+    return this;
   }
 
   find(where: any = {}, select: any = {}) {
@@ -312,14 +324,25 @@ class F {
     return this;
   }
 
-  join(tableName: string, keyObj: any, type = '') {
-    let key = 'JOIN';
-    key = type === 'RIGHT' ? 'RIGHT ' + key : key;
-    key = type === 'LEFT' ? 'LEFT ' + key : key;
-    const sql = Object.keys(keyObj)
-      .map((k) => `public.${k} = public.${keyObj[k]}`)
-      .join(' AND ');
-    this.query[key].push(`public.${tableName} ON ${sql}`);
+  delete(where: any = {}, returning = {}) {
+    this.query['DELETE FROM'] = this.query.FROM;
+
+    const whereArr = _getWhereArr(where);
+    /* istanbul ignore else */
+    if (whereArr.length > 0) {
+      this.query.WHERE = whereArr.join(' AND ');
+    }
+
+    /* istanbul ignore else */
+    if (returning && typeof returning === 'object') {
+      const fields = _coverFields(returning);
+
+      /* istanbul ignore else */
+      if (fields) {
+        this.query.RETURNING = fields;
+      }
+    }
+
     return this;
   }
 
@@ -357,6 +380,19 @@ class F {
         text: format.withArray(strArr.join(' '), argArr),
         values: this.query.values,
       };
+    }
+
+    if (this.query['DELETE FROM']) {
+      ['DELETE FROM', 'WHERE', 'RETURNING'].forEach((key) => {
+        const value = this.query[key];
+
+        if (value) {
+          strArr.push('%s', '%s');
+          argArr.push(key, value);
+        }
+      });
+
+      return format.withArray(strArr.join(' '), argArr);
     }
 
     ['SELECT', 'FROM', 'JOIN', 'RIGHT JOIN', 'LEFT JOIN', 'WHERE', 'ORDER BY', 'OFFSET', 'LIMIT'].forEach((key) => {
