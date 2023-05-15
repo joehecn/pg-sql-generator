@@ -194,26 +194,6 @@ it('false', () => {
   };
   expect(f('user').find(where).exec()).toBe('SELECT * FROM public.user WHERE is_admin = false');
 });
-/* insert */
-it('insertOne()', () => {
-  expect(f('user').insertOne().exec()).toEqual({ text: 'INSERT INTO public.user() VALUES ()', values: [] });
-});
-it('insertOne({}, {})', () => {
-  expect(
-    f('user')
-      .insertOne(
-        {
-          name: 'joe',
-          user_age: 40,
-        },
-        { name: 1, user_age: 'userAge' },
-      )
-      .exec(),
-  ).toEqual({
-    text: 'INSERT INTO public.user(name, user_age) VALUES ($1, $2) RETURNING name, user_age AS "userAge"',
-    values: ['joe', 40],
-  });
-});
 /** join */
 it('f().join()', () => {
   const where = { $or: [{ organization_application_id: '15', platform: 'Mega' }] };
@@ -288,7 +268,6 @@ it('f().join()', () => {
     "WHERE device_profile.age = 21 AND (organization_application_id = 15 AND device_profile.platform = 'Mega' AND device_profile.custom_id ~* 'mega-tereo') ORDER BY id DESC LIMIT 10";
   expect(text).toEqual(result);
 });
-/** join */
 it('f().join() 测试多个join', () => {
   const select = {
     'info.id': 'id',
@@ -317,4 +296,36 @@ it('f().join() 测试多个join', () => {
   const result =
     'SELECT info.id AS id, image, info.organization_id AS organization_id, info.description AS "infoDescription", title AS name, star, category_id, info_category.name AS "categoryName", info_translate.name AS title, info_translate.description AS description, content, language FROM public.info JOIN public.info_translate ON public.info.id = public.info_translate.id JOIN public.info_category ON public.info.category_id = public.info_category.id ORDER BY id DESC LIMIT 10';
   expect(text).toEqual(result);
+});
+
+/* insert */
+it('insertOne()', () => {
+  expect(f('user').insertOne().exec()).toEqual({ text: 'INSERT INTO public.user() VALUES ()', values: [] });
+});
+it('insertOne({}, {})', () => {
+  expect(
+    f('user')
+      .insertOne(
+        {
+          name: 'joe',
+          user_age: 40,
+        },
+        { name: 1, user_age: 'userAge' },
+      )
+      .exec(),
+  ).toEqual({
+    text: 'INSERT INTO public.user(name, user_age) VALUES ($1, $2) RETURNING name, user_age AS "userAge"',
+    values: ['joe', 40],
+  });
+});
+
+/* update */
+it('update()', () => {
+  expect(f('user').update().exec()).toEqual({ text: 'UPDATE public.user', values: [] });
+});
+it('update({},{},{})', () => {
+  expect(f('user').update({ country_code: '123' }, { id: '1' }, { id: 'globalId', icon: 1 }).exec()).toEqual({
+    text: `UPDATE public.user SET country_code=$1 WHERE id = '1' RETURNING id AS "globalId", icon`,
+    values: ['123'],
+  });
 });

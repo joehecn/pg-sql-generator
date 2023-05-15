@@ -104,12 +104,35 @@ function _coverFields(fields: any) {
   return null;
 }
 
+function _getWhereArr(where: any) {
+  const arr = [];
+
+  /* istanbul ignore else */
+  if (where && typeof where === 'object') {
+    for (const key of Object.keys(where)) {
+      const value = where[key];
+      if (key === '$or') {
+        const _v = _getOr(value);
+        /* istanbul ignore else */
+        if (_v) {
+          arr.push(_v);
+        }
+      } else {
+        arr.push(_getItem(key, value));
+      }
+    }
+  }
+
+  return arr;
+}
+
 class F {
   callCounted: boolean;
   query: any;
 
   constructor(tableName: string) {
     this.callCounted = false;
+
     this.query = {
       // find
       SELECT: '*',
@@ -121,11 +144,13 @@ class F {
       'ORDER BY': null,
       OFFSET: null,
       LIMIT: null,
-      // insert
-      'INSERT INTO': null,
+      // insert and update
+      'INSERT INTO': null, // insert
       VALUES: null,
-      values: [],
+      UPDATE: null, // update
+      SET: null,
       RETURNING: null,
+      values: [],
     };
   }
 
@@ -133,27 +158,10 @@ class F {
     // 如果已经 count 过了
     if (this.callCounted) return this;
 
+    const whereArr = _getWhereArr(where);
     /* istanbul ignore else */
-    if (where && typeof where === 'object') {
-      const arr = [];
-
-      for (const key of Object.keys(where)) {
-        const value = where[key];
-        if (key === '$or') {
-          const _v = _getOr(value);
-          /* istanbul ignore else */
-          if (_v) {
-            arr.push(_v);
-          }
-        } else {
-          arr.push(_getItem(key, value));
-        }
-      }
-
-      /* istanbul ignore else */
-      if (arr.length > 0) {
-        this.query.WHERE = arr.join(' AND ');
-      }
+    if (whereArr.length > 0) {
+      this.query.WHERE = whereArr.join(' AND ');
     }
 
     /* istanbul ignore else */
@@ -233,15 +241,15 @@ class F {
     /* istanbul ignore else */
     if (row && typeof row === 'object') {
       const keys = [];
-      const values = [];
       const placeholders = [];
+      const values = [];
 
       let i = 1;
       for (const key of Object.keys(row)) {
         const value = row[key];
         keys.push(key);
-        values.push(value);
         placeholders.push(`$${i}`);
+        values.push(value);
         i++;
       }
 
@@ -265,6 +273,45 @@ class F {
 
   // insertMany(arr) {}
 
+  update(set: any = {}, where: any = {}, returning = {}) {
+    this.query.UPDATE = this.query.FROM;
+
+    /* istanbul ignore else */
+    if (set && typeof set === 'object') {
+      const placeholders = [];
+      const values = [];
+
+      let i = 1;
+      for (const key of Object.keys(set)) {
+        const value = set[key];
+        placeholders.push(`${key}=$${i}`);
+        values.push(value);
+        i++;
+      }
+
+      this.query.SET = `${placeholders.join(', ')}`;
+      this.query.values = values;
+    }
+
+    const whereArr = _getWhereArr(where);
+    /* istanbul ignore else */
+    if (whereArr.length > 0) {
+      this.query.WHERE = whereArr.join(' AND ');
+    }
+
+    /* istanbul ignore else */
+    if (returning && typeof returning === 'object') {
+      const fields = _coverFields(returning);
+
+      /* istanbul ignore else */
+      if (fields) {
+        this.query.RETURNING = fields;
+      }
+    }
+
+    return this;
+  }
+
   join(tableName: string, keyObj: any, type = '') {
     let key = 'JOIN';
     key = type === 'RIGHT' ? 'RIGHT ' + key : key;
@@ -279,8 +326,25 @@ class F {
   exec() {
     const strArr: string[] = [];
     const argArr: any[] = [];
+
     if (this.query['INSERT INTO']) {
       ['INSERT INTO', 'VALUES', 'RETURNING'].forEach((key) => {
+        const value = this.query[key];
+
+        if (value) {
+          strArr.push('%s', '%s');
+          argArr.push(key, value);
+        }
+      });
+
+      return {
+        text: format.withArray(strArr.join(' '), argArr),
+        values: this.query.values,
+      };
+    }
+
+    if (this.query.UPDATE) {
+      ['UPDATE', 'SET', 'WHERE', 'RETURNING'].forEach((key) => {
         const value = this.query[key];
 
         if (value) {
